@@ -7,9 +7,14 @@ The following steps could be applied to normalize text as requirement.
 >removing special characters
 >removing stopword
 >lemmatization or stemming
+
+After processing, two files are output.
+>termlist<index_interval>.csv: Dataframe<tags,popularity> for each song
+>freqstat<index_interval>.csv: Dataframe<term,popularity> for each term
 """
 import pandas as pd
 import numpy as np
+
 #Removing html tags
 from bs4 import BeautifulSoup
 def strip_html_tags(text):
@@ -176,10 +181,12 @@ def tags_handler(tagsets):
 
 tagsdata = pd.read_csv("alltranstags_phrase.csv")
 import time
+from tqdm import tqdm
 start = time.perf_counter()
-tagsdata1 = tagsdata[105000:210000]
+#tagsdata1 = tagsdata[0:105000]
 print("Start to process tags...")
-result = tagsdata1['tags'].apply(tags_handler)
+tqdm.pandas(desc="tag processing")
+result = tagsdata['tags'].progress_apply(tags_handler)
 tagsdata_result = result.to_frame()
 
 #tagsdata_result = pd.concat([tagsdata_result,result.to_frame()])
@@ -188,14 +195,14 @@ print('runtime:', round(end-start))
 
 #transform the terms with frequency to a string
 #input is a dataframe for one song, column is term and popularity
-str =';'
-def concat_terms(row):
-    return str.join([row['term']]*int(row['popularity']))
-
-def handle_result(item): 
-    termslist = item.apply(concat_terms,axis=1)
-    return str.join(termslist)
-
+#str =';'
+#def concat_terms(row):
+#    return str.join([row['term']]*int(row['popularity']))
+#
+#def handle_result(item): 
+#    termslist = item.apply(concat_terms,axis=1)
+#    return str.join(termslist)
+#
 ##accumulate all terms and frequency
 df = pd.DataFrame(columns=['term','popularity'])
 def term_freqstat(item):
@@ -219,16 +226,14 @@ def get_popularity(item):
 
 termlist = tagsdata_result['tags'].apply(get_terms).to_frame()
 termlist['popularity'] = tagsdata_result['tags'].apply(get_popularity)
-termlist.to_csv("termlist_105000_210000.csv")
+termlist.to_csv("termlist_0_504555.csv")
 
 #output3: calculate overall terms and frequency
-tagsdata_result['tags'].apply(term_freqstat)
-print("finish accumulating")
+#from tqdm import tqdm
+tqdm.pandas(desc="termfreq acc")
+tagsdata_result['tags'].progress_apply(term_freqstat)
 grouped = df['popularity'].groupby(df['term'])
-print("finish grouping")
 newtftable = grouped.sum()
-print("finish summing")
 df = pd.DataFrame({'term':newtftable.index,'popularity':newtftable.values})
-print("finish shaping df")
-df.to_csv("freqstat_105000_210000.csv")
+df.to_csv("freqstat_0_504555.csv")
 
